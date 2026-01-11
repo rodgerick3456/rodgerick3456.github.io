@@ -1,0 +1,329 @@
+<!DOCTYPE html>  <html lang="en">  
+<head>  
+    <meta charset="UTF-8">  
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">  
+    <title>Snake Pro - Ghost Revive</title>  
+<link rel="icon" type="image/png" href="favicon.png">  
+<link rel="apple-touch-icon" href="favicon.png">  
+<meta name="theme-color" content="#00ff88">  
+
+<style>  
+    :root {  
+        --bg-color: #0a0a1a;  
+        --accent: #e94560;  
+        --panel-bg: rgba(10, 10, 30, 0.98);  
+        --s-head: #00ff88;  
+        --coin-color: #ffd700;  
+        --watch-color: #00d4ff;  
+    }  
+    body {  
+        display: flex; flex-direction: column; align-items: center; justify-content: center;  
+        height: 100vh; margin: 0; background-color: var(--bg-color); color: white;  
+        font-family: 'Segoe UI', sans-serif; overflow: hidden; touch-action: none;  
+    }  
+    .top-bar { display: flex; width: 92vw; justify-content: space-between; align-items: flex-start; margin-bottom: 10px; z-index: 10; }  
+    .info { display: flex; flex-direction: column; align-items: flex-end; gap: 4px; font-weight: bold; font-size: 12px; }  
+    #game-container { position: relative; }  
+    canvas { border: 2px solid #1a1a3a; border-radius: 10px; background-color: #050510; max-width: 85vw; max-height: 85vw; display: block; box-shadow: 0 0 20px rgba(0, 255, 136, 0.1); }  
+    .overlay {  
+        position: absolute; top: 0; left: 0; width: 100%; height: 100%;  
+        background: var(--panel-bg); display: none; flex-direction: column;  
+        align-items: center; justify-content: center; border-radius: 10px; z-index: 100;  
+        text-align: center; padding: 15px; box-sizing: border-box;  
+    }  
+    .btn-ui { padding: 10px 20px; font-size: 14px; font-weight: bold; color: white; border: none; border-radius: 10px; cursor: pointer; width: 180px; margin: 4px; transition: 0.2s; }  
+    .play-btn { background: var(--s-head); color: #1a1a2e; box-shadow: 0 0 15px var(--s-head); width: 220px; font-size: 18px; }  
+    .skin-btn { width: 35px; height: 35px; border-radius: 8px; border: 2px solid white; cursor: pointer; }  
+    .controls { margin-top: 15px; display: grid; grid-template-columns: repeat(3, 65px); gap: 10px; }  
+    .btn-ctrl { width: 65px; height: 65px; background: #16213e; border-radius: 15px; color: white; font-size: 28px; display: flex; align-items: center; justify-content: center; box-shadow: 0 4px 0 #0a1128; user-select: none; }  
+    .shop-item { background: rgba(255,255,255,0.05); padding: 10px; border-radius: 12px; border: 1px solid #333; width: 85%; margin-bottom: 8px;}  
+    .music-item { background: #1a1a3a; margin: 6px; border: 1px solid transparent; }
+</style>
+</head>  
+<body>  
+
+<div id="start-screen" style="position:fixed; inset:0; background:var(--bg-color); display:flex; flex-direction:column; align-items:center; justify-content:center; z-index:1000;">  
+    <h1 style="color:var(--s-head); text-shadow:0 0 15px var(--s-head); letter-spacing:3px;">SNAKE PRO</h1>  
+    <button class="btn-ui play-btn" onclick="startGame()">START GAME</button>  
+</div>  
+
+<audio id="bgMusic" loop><source src="Canvas of life.mp3" type="audio/mpeg"></audio>  
+
+<div class="top-bar">  
+    <div style="display:flex; gap:5px;">  
+        <button onclick="toggleFullscreen()" style="padding:5px 8px; background:#16213e; color:white; border:none; border-radius:5px; font-size:10px;">FS</button>  
+        <button onclick="openSettings()" style="padding:5px 8px; background:#16213e; color:white; border:none; border-radius:5px; font-size:10px;">Settings</button>  
+        <button onclick="openMusic()" style="padding:5px 8px; background:#16213e; color:white; border:none; border-radius:5px; font-size:10px;">Music</button>
+    </div>  
+    <div class="info">  
+        <div style="display:flex; align-items:center; gap:5px; color:var(--coin-color); font-size:14px;">  
+            <div style="width:12px; height:12px; background:var(--coin-color); border-radius:50%;"></div>  
+            <span>AppleCoins: <span id="coinVal">0</span></span>  
+        </div>  
+        <button onclick="openShop()" style="background:#ffd700; color:#000; border:none; padding:3px 10px; border-radius:4px; font-size:10px; font-weight:900;">SHOP</button>  
+        <div>Score: <span id="scoreVal">0</span> | Best: <span id="highScoreVal">0</span></div>  
+    </div>  
+</div>  
+
+<div id="game-container">  
+    <canvas id="gameCanvas" width="400" height="400"></canvas>  
+      
+    <div id="menu" class="overlay">  
+        <h2 style="color:var(--accent);">GAME OVER</h2>  
+        <button id="reviveBtn" class="btn-ui" style="background:#54a0ff; box-shadow: 0 0 10px #54a0ff;" onclick="reviveSnake()">REVIVE</button>
+        <button class="btn-ui" style="background:var(--accent);" onclick="resetGame()">RESTART</button>  
+    </div>  
+
+    <div id="shop" class="overlay">  
+        <h2 style="color:var(--coin-color);">SHOP</h2>  
+        <div class="shop-item">  
+            <p style="margin:5px; font-size:12px;">RAINBOW SKIN (PERM)</p>  
+            <button id="buyRainbowBtn" class="btn-ui" style="background:linear-gradient(to right, red, purple); width:140px;" onclick="handleRainbowPurchase()">BUY 500 C</button>  
+        </div>  
+        <div class="shop-item">  
+            <p style="margin:5px; font-size:12px;">WATCH SPAWN (ONCE)</p>  
+            <button class="btn-ui" style="background:var(--watch-color); color:#000; width:140px;" onclick="handleWatchPurchase()">BUY 50 C</button>  
+        </div>  
+        <button class="btn-ui" style="background:transparent; border:1px solid #555; width:100px;" onclick="closeShop()">CLOSE</button>  
+    </div>  
+
+    <div id="settings" class="overlay">  
+        <h3>SETTINGS</h3>  
+        <div style="display:flex; gap:5px; margin-bottom:10px;">  
+            <button id="musicToggle" class="btn-ui" style="width:85px; font-size:10px;" onclick="toggleMusic()">MUSIC: ON</button>  
+            <button id="sfxToggle" class="btn-ui" style="width:85px; font-size:10px;" onclick="toggleSFX()">SFX: ON</button>  
+        </div>  
+        <div style="display:flex; gap:10px; margin-bottom:10px;">  
+            <div class="skin-btn" style="background:#00ff88;" onclick="setPreset('#00ff88')"></div>  
+            <div class="skin-btn" style="background:#00d4ff;" onclick="setPreset('#00d4ff')"></div>  
+            <div class="skin-btn" style="background:#ffcc00;" onclick="setPreset('#ffcc00')"></div>  
+        </div>  
+        <input type="text" id="hexInput" placeholder="#HEX" maxlength="7" style="background:#16213e; border:1px solid #333; color:white; padding:5px; border-radius:5px; width:100px; text-align:center; margin-bottom:10px;" oninput="setHex(this.value)">  
+          
+        <button class="btn-ui" style="background:#d63031; width:160px; font-size:12px; margin-bottom:5px;" onclick="showResetConfirm()">RESET DATA</button>  
+        <button class="btn-ui" style="background:#444; width:120px; font-size:10px;" onclick="showDebugAuth()">DEBUG</button>  
+        <button class="btn-ui" style="background:transparent; border:1px solid #555; width:100px; margin-top:5px;" onclick="closeSettings()">CLOSE</button>  
+    </div>  
+
+    <div id="musicMenu" class="overlay">
+        <h3 style="color:var(--watch-color);">PLAYLIST</h3>
+        <button class="btn-ui music-item" data-src="Canvas of life.mp3" onclick="changeTrack(this)">Track 1</button>
+        <button class="btn-ui music-item" data-src="music2.mp3" onclick="changeTrack(this)">Track 2</button>
+        <button class="btn-ui music-item" data-src="music3.mp3" onclick="changeTrack(this)">Track 3</button>
+        <button class="btn-ui" style="background:var(--accent); width:160px; margin-top:10px;" onclick="resetToDefaultMusic()">RESET MUSIC</button>
+        <button class="btn-ui" style="background:transparent; border:1px solid #555; width:100px; margin-top:5px;" onclick="closeMusic()">CLOSE</button>
+    </div>
+
+    <div id="confirm-reset" class="overlay">
+        <h3 style="color:var(--accent);">RESET ALL PROGRESS?</h3>
+        <button class="btn-ui" style="background:var(--accent);" onclick="clearGameData()">YES, RESET</button>
+        <button class="btn-ui" style="background:#444;" onclick="document.getElementById('confirm-reset').style.display='none'; openSettings();">CANCEL</button>
+    </div>
+
+    <div id="wrong-code" class="overlay">
+        <h3 style="color:var(--accent);">WRONG CODE!</h3>
+        <button class="btn-ui" style="background:#444;" onclick="document.getElementById('wrong-code').style.display='none'; openSettings();">BACK</button>
+    </div>
+
+    <div id="debug-auth" class="overlay">  
+        <p>ENTER CODE</p>  
+        <input type="password" id="debugCodeInput" style="background:#0f3460; border:1px solid var(--accent); color:white; padding:10px; border-radius:10px; text-align:center; margin-bottom:10px;">  
+        <button class="btn-ui" style="width:80px;" onclick="checkDebugCode()">OK</button>  
+    </div>  
+
+    <div id="debug-menu" class="overlay">  
+        <h3 style="color:var(--s-head);">DEBUG</h3>  
+        <button class="btn-ui" style="background:#ffd700; color:#000;" onclick="addCoins(100)">+100 COINS</button>  
+        <button class="btn-ui" style="background:#222;" onclick="toggleGod()">GOD MODE</button>  
+        <button class="btn-ui" style="background:#333;" onclick="document.getElementById('debug-menu').style.display='none'; startLoop();">EXIT</button>  
+    </div>  
+</div>  
+
+<div class="controls">  
+    <div style="grid-column:2" class="btn-ctrl" onclick="setDir('up')">↑</div>  
+    <div style="grid-column:1" class="btn-ctrl" onclick="setDir('left')">←</div>  
+    <div style="grid-column:2" class="btn-ctrl" onclick="setDir('down')">↓</div>  
+    <div style="grid-column:3" class="btn-ctrl" onclick="setDir('right')">→</div>  
+</div>  
+
+<script>  
+    const canvas = document.getElementById("gameCanvas");  
+    const ctx = canvas.getContext("2d");  
+    const bgMusic = document.getElementById("bgMusic");  
+    bgMusic.volume = 0.2;  
+
+    const box = 20;  
+    let score=0, highScore=localStorage.getItem("snakeScore")||0;  
+    let appleCoins=parseInt(localStorage.getItem("appleCoins"))||0;  
+    let snake=[], foodList=[], currentCoin=null, currentWatch=null;
+    let d="right", nextD="right", gameInterval;  
+    let isGameOver=false, gameStarted=false, gameSpeed=180, normalSpeed=180;  
+    let musicEnabled=true, sfxEnabled=true, godMode=false;  
+    
+    let canRevive = true; 
+    let ghostMode = false; 
+
+    let hasRainbow = localStorage.getItem("hasRainbow") === "true";  
+    let rainbowActive = localStorage.getItem("rainbowActive") === "true";  
+    let rainbowMode = false, rainbowHue = 0;  
+    let currentHex = localStorage.getItem("snakeColor") || "#00ff88";  
+
+    const audioCtx = new (window.AudioContext || window.webkitAudioContext)();  
+    function playSfx(f) { if(sfxEnabled) { const o=audioCtx.createOscillator(); const g=audioCtx.createGain(); o.frequency.setValueAtTime(f, audioCtx.currentTime); g.gain.exponentialRampToValueAtTime(0.01, audioCtx.currentTime+0.1); o.connect(g); g.connect(audioCtx.destination); o.start(); o.stop(audioCtx.currentTime+0.1); } }  
+
+    document.getElementById("highScoreVal").innerText = highScore;  
+    document.getElementById("coinVal").innerText = appleCoins;  
+    setPreset(currentHex);  
+
+    function updateShopUI() { document.getElementById("buyRainbowBtn").innerText = hasRainbow ? (rainbowActive ? "UNEQUIP" : "EQUIP") : "BUY 500 C"; }  
+    function handleRainbowPurchase() { if(!hasRainbow && appleCoins >= 500) { appleCoins -= 500; hasRainbow = true; localStorage.setItem("appleCoins", appleCoins); localStorage.setItem("hasRainbow", "true"); } else if(hasRainbow) { rainbowActive = !rainbowActive; localStorage.setItem("rainbowActive", rainbowActive); } rainbowMode = rainbowActive; document.getElementById("coinVal").innerText = appleCoins; updateShopUI(); }  
+    function handleWatchPurchase() { if(appleCoins >= 50) { appleCoins -= 50; localStorage.setItem("appleCoins", appleCoins); document.getElementById("coinVal").innerText = appleCoins; spawnItem('watch'); playSfx(800); closeShop(); } }  
+
+    function openShop() { clearInterval(gameInterval); document.getElementById("shop").style.display="flex"; }  
+    function closeShop() { document.getElementById("shop").style.display="none"; if(gameStarted && !isGameOver) startLoop(); }  
+    function openSettings() { clearInterval(gameInterval); document.getElementById("settings").style.display="flex"; }  
+    function closeSettings() { document.getElementById("settings").style.display="none"; if(gameStarted && !isGameOver) startLoop(); }  
+    function openMusic() { clearInterval(gameInterval); document.getElementById("musicMenu").style.display = "flex"; }
+    function closeMusic() { document.getElementById("musicMenu").style.display = "none"; if(gameStarted && !isGameOver) startLoop(); }
+    
+    function changeTrack(btn) {
+        const src = btn.getAttribute("data-src");
+        bgMusic.src = src;
+        if(musicEnabled) bgMusic.play();
+        document.querySelectorAll('.music-item').forEach(b => b.style.borderColor = "transparent");
+        btn.style.borderColor = "var(--s-head)";
+    }
+
+    function resetToDefaultMusic() {
+        bgMusic.src = "Canvas of life.mp3";
+        if(musicEnabled) bgMusic.play();
+        document.querySelectorAll('.music-item').forEach(b => b.style.borderColor = "transparent");
+    }
+
+    // ЛОГИКА ПЕРЕРОЖДЕНИЯ (Теперь мгновенная без рекламы)
+    function reviveSnake() {
+        if(!canRevive) return;
+        processRevive();
+    }
+
+    function processRevive() {
+        isGameOver = false;
+        canRevive = false; 
+        ghostMode = true; 
+        document.getElementById("menu").style.display = "none";
+        document.getElementById("reviveBtn").style.opacity = "0.5";
+        setTimeout(() => { ghostMode = false; }, 5000); // 5 секунд бессмертия
+        startLoop();
+    }
+      
+    function showResetConfirm() { document.getElementById('settings').style.display = 'none'; document.getElementById('confirm-reset').style.display = 'flex'; }
+    function clearGameData() { localStorage.clear(); location.reload(); }  
+    function showDebugAuth() { document.getElementById('settings').style.display='none'; document.getElementById('debug-auth').style.display='flex'; }  
+    function checkDebugCode() { 
+        if(document.getElementById('debugCodeInput').value === "914102") { 
+            document.getElementById('debug-auth').style.display='none'; 
+            document.getElementById('debug-menu').style.display='flex'; 
+        } else { 
+            document.getElementById('debug-auth').style.display='none';
+            document.getElementById('wrong-code').style.display='flex'; 
+        } 
+    }  
+
+    function toggleGod() { godMode = !godMode; }  
+    function addCoins(n) { appleCoins += n; localStorage.setItem("appleCoins", appleCoins); document.getElementById("coinVal").innerText = appleCoins; }  
+    function setPreset(h) { currentHex = h; localStorage.setItem("snakeColor", h); document.documentElement.style.setProperty('--s-head', h); }  
+    function setHex(v) { if(v.length===7 && v.startsWith('#')) setPreset(v); }  
+    function toggleSFX() { sfxEnabled=!sfxEnabled; document.getElementById("sfxToggle").innerText=`SFX: ${sfxEnabled?'ON':'OFF'}`; }  
+    function toggleMusic() { musicEnabled=!musicEnabled; musicEnabled?bgMusic.play():bgMusic.pause(); document.getElementById("musicToggle").innerText=`MUSIC: ${musicEnabled?'ON':'OFF'}`; }  
+
+    function setDir(dir) { if(dir=="left"&&d!="right") nextD="left"; if(dir=="up"&&d!="down") nextD="up"; if(dir=="right"&&d!="left") nextD="right"; if(dir=="down"&&d!="up") nextD="down"; }  
+    function startGame() { document.getElementById("start-screen").style.display="none"; gameStarted=true; rainbowMode=rainbowActive; if(musicEnabled) bgMusic.play().catch(()=>{}); resetGame(); }  
+    
+    function resetGame() { 
+        score=0; 
+        snake=[{x:10*box, y:10*box},{x:9*box, y:10*box}]; 
+        foodList=[];
+        currentCoin=null; currentWatch=null; 
+        spawnFood(true);
+        isGameOver=false; 
+        canRevive = true; 
+        ghostMode = false;
+        document.getElementById("reviveBtn").style.opacity = "1";
+        d="right"; nextD="right"; gameSpeed=normalSpeed; 
+        document.getElementById("menu").style.display="none"; 
+        startLoop(); 
+    }  
+
+    function startLoop() { if(gameInterval) clearInterval(gameInterval); gameInterval=setInterval(draw, gameSpeed); }  
+
+    function spawnFood(isFirst = false) { 
+        let count = 1;
+        if (!isFirst && Math.random() < 0.20) count = Math.floor(Math.random() * 9) + 1;
+        for(let i=0; i<count; i++) {
+            let v=false, newFood;
+            while(!v){ 
+                newFood = {x:Math.floor(Math.random()*18+1)*box, y:Math.floor(Math.random()*18+1)*box}; 
+                v = !snake.some(p=>p.x===newFood.x&&p.y===newFood.y) && !foodList.some(f=>f.x===newFood.x&&f.y===newFood.y); 
+            }
+            foodList.push(newFood);
+        }
+    }  
+
+    function spawnItem(t) { let v=false, n; while(!v){ n={x:Math.floor(Math.random()*18+1)*box, y:Math.floor(Math.random()*18+1)*box}; v=!snake.some(p=>p.x===n.x&&p.y===n.y); } if(t==='coin') currentCoin=n; if(t==='watch') currentWatch=n; }  
+
+    function draw() {  
+        d = nextD;  
+        ctx.fillStyle = "#050510"; ctx.fillRect(0,0,canvas.width,canvas.height);  
+        ctx.shadowBlur = 15; ctx.shadowColor = "#ff4d4d"; ctx.fillStyle = "#ff4d4d";
+        foodList.forEach(f => { ctx.beginPath(); ctx.arc(f.x+box/2, f.y+box/2, 8, 0, Math.PI*2); ctx.fill(); });
+        if(currentCoin){ ctx.shadowColor="#ffd700"; ctx.fillStyle="#ffd700"; ctx.beginPath(); ctx.arc(currentCoin.x+box/2, currentCoin.y+box/2, 8, 0, Math.PI*2); ctx.fill(); }  
+        if(currentWatch){ ctx.shadowColor="#00d4ff"; ctx.fillStyle="#00d4ff"; ctx.beginPath(); ctx.arc(currentWatch.x+box/2, currentWatch.y+box/2, 8, 0, Math.PI*2); ctx.fill(); ctx.fillStyle="white"; ctx.fillRect(currentWatch.x+box/2-1, currentWatch.y+box/2-4, 2, 4); }  
+        
+        if(rainbowMode) rainbowHue = (rainbowHue+5)%360;  
+        
+        snake.forEach((p, i) => {  
+            let c = rainbowMode ? `hsl(${(rainbowHue-(i*12))%360}, 100%, 50%)` : currentHex;  
+            ctx.globalAlpha = ghostMode ? (Math.sin(Date.now()/100) > 0 ? 0.3 : 0.7) : 1.0;
+            ctx.shadowBlur=10; ctx.shadowColor=c; ctx.fillStyle=c; ctx.beginPath(); ctx.roundRect(p.x+1, p.y+1, box-2, box-2, 5); ctx.fill();  
+            if(i===0){ ctx.shadowBlur=0; ctx.fillStyle="black"; let ex1,ey1,ex2,ey2; if(d=="right"){ex1=12;ey1=5;ex2=12;ey2=12;} else if(d=="left"){ex1=5;ey1=5;ex2=5;ey2=12;} else if(d=="up"){ex1=5;ey1=5;ex2=12;ey2=5;} else {ex1=5;ey1=12;ex2=12;ey2=12;} ctx.fillRect(p.x+ex1, p.y+ey1, 3, 3); ctx.fillRect(p.x+ex2, p.y+ey2, 3, 3); }  
+        });  
+        ctx.globalAlpha = 1.0; 
+
+        let sX = snake[0].x, sY = snake[0].y;  
+        if(d=="left") sX-=box; if(d=="up") sY-=box; if(d=="right") sX+=box; if(d=="down") sY+=box;  
+        
+        let foodIndex = foodList.findIndex(f => f.x === sX && f.y === sY);
+        if(foodIndex !== -1){ 
+            score++; playSfx(600); foodList.splice(foodIndex, 1); 
+            if(Math.random()<0.5) addCoins(Math.floor(Math.random()*7)+3); 
+            if(Math.random()<0.3) spawnItem('coin'); 
+            document.getElementById("scoreVal").innerText=score; 
+            if(score>highScore){highScore=score; localStorage.setItem("snakeScore", highScore); document.getElementById("highScoreVal").innerText=highScore;} 
+            if(foodList.length === 0) spawnFood(); else if(Math.random() < 0.20) spawnFood();
+        }  
+        else if(currentCoin && sX==currentCoin.x && sY==currentCoin.y){ addCoins(1); playSfx(900); currentCoin=null; }  
+        else if(currentWatch && sX==currentWatch.x && sY==currentWatch.y){ currentWatch=null; playSfx(400); gameSpeed=350; startLoop(); setTimeout(()=>{gameSpeed=normalSpeed; if(!isGameOver) startLoop();}, 5000); }  
+        else { snake.pop(); }  
+        
+        let h = {x:sX, y:sY};  
+        let hitWall = (sX<0 || sX>=canvas.width || sY<0 || sY>=canvas.height);
+        let hitSelf = snake.some(p=>p.x===h.x&&p.y===h.y);
+
+        if(!godMode && !ghostMode && (hitWall || hitSelf)){ 
+            isGameOver=true; clearInterval(gameInterval); 
+            document.getElementById("menu").style.display="flex"; 
+            document.getElementById("reviveBtn").style.display = canRevive ? "block" : "none";
+            return; 
+        }  
+        if(godMode || ghostMode){ 
+            if(h.x<0) h.x=canvas.width-box; if(h.x>=canvas.width) h.x=0; 
+            if(h.y<0) h.y=canvas.height-box; if(h.y>=canvas.height) h.y=0; 
+        }  
+        snake.unshift(h);  
+    }  
+    function toggleFullscreen() { if(!document.fullscreenElement) document.documentElement.requestFullscreen(); else document.exitFullscreen(); }  
+</script>
+
+</body>  
+</html>
+
